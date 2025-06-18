@@ -1,0 +1,13 @@
+from PIL import Image
+import pytesseract 
+
+image_1= 'Task 2\ocr-test1.png'
+image_2='Task 2\ocr-test2.jpg'
+image_3='Task 2\ocr-test3.png'
+img_obj_1= Image.open(image_1)
+img_obj_2= Image.open(image_2)
+img_obj_3= Image.open(image_3)
+text_1= pytesseract.image_to_string(img_obj_1)
+text_2=pytesseract.image_to_string(img_obj_2)
+text_3=pytesseract.image_to_string(img_obj_3)
+print("\nSummary 1\n\n", text_1, "\nSummary 2\n", text_2, "\nSummary 3", text_3)
