@@ -1,0 +1,80 @@
+from PIL import Image
+import pytesseract
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnableParallel, RunnableLambda, RunnableSequence
+from langchain.schema.output_parser import StrOutputParser
+
+
+image_1='Task 2\Step5-1.png'
+image_2='Task 2\Step5-2.png'
+image_3='Task 2\Step5-3.png'
+img_obj_1= Image.open(image_1)
+img_obj_2= Image.open(image_2)
+img_obj_3= Image.open(image_3)
+text_1= pytesseract.image_to_string(img_obj_1)
+text_2=pytesseract.image_to_string(img_obj_2)
+text_3=pytesseract.image_to_string(img_obj_3)
+text_final=text_1+text_2+text_3
+
+
+load_dotenv()
+
+
+model=ChatOpenAI(model='gpt-4o-mini')
+
+messages= [
+    ("system", "You are supposed to be thorough with the given text which was scanned from an image using pytesseract, expect errors/discontinuities in the text"),
+    ("human", "the given text is {text_final}")
+]
+prompt_template = ChatPromptTemplate.from_messages(messages)
+
+
+def summaries_fn(text_final):
+    messages= [
+        ("system", "You are supposed to summarize the given text which was scanned from an image using pytesseract, expect errors/discontinuities in the text."),
+        ("human", "summarize the given text {text_final}")
+    ]
+    return ChatPromptTemplate.from_messages(messages)
+
+def key_entities_fn(text_final):
+    messages= [
+        ("system", "You are supposed to extract key entities such as important dates,names etc from the given text which was scanned from an image using pytesseract, expect errors/discontinuities in the text "),
+        ("human", "extract key entities from the given text {text_final}")
+    ]
+    return ChatPromptTemplate.from_messages(messages)
+
+def combine_summary_key_ents(summ, key_ent):
+    return f"Summary : \n\n {summ} \n\n\n KeyEntities : \n{key_ent}"
+
+summ_parallel_chain = (
+    RunnableSequence(lambda x : summaries_fn(x), model, StrOutputParser())
+)
+
+key_ent_parallel_chain = (
+    RunnableSequence(lambda x : key_entities_fn(x), model, StrOutputParser())
+)
+
+chain = (
+    prompt_template
+    |model
+    |StrOutputParser()
+    | RunnableParallel(branches ={"summ" : summ_parallel_chain, "key_ent" : key_ent_parallel_chain})
+    | RunnableLambda(lambda x : combine_summary_key_ents(x["branches"]["summ"], x["branches"]["key_ent"] ))
+)
+
+result = chain.invoke({"text_final" : text_final})
+print("------------ Chain basic Example -------------")
+print(result)
+
+
+
+
+
+
+
+
+
+
